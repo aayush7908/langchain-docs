@@ -9,9 +9,7 @@ This quickstart demonstrates how to build a calculator agent using the LangGraph
 - [Use the Graph API](#use-the-graph-api) if you prefer to define your agent as a graph of nodes and edges.
 - [Use the Functional API](#use-the-functional-api) if you prefer to define your agent as a single function.
 
-<Tip>
 For conceptual information, see [Graph API overview](/oss/python/langgraph/graph-api) and [Functional API overview](/oss/python/langgraph/functional-api).
-</Tip>
 
 <Info>
 For this example, you will need to set up a [Claude (Anthropic)](https://www.anthropic.com/) account and get an API key. Then, set the `ANTHROPIC_API_KEY` environment variable in your terminal.
@@ -217,6 +215,10 @@ for m in messages["messages"]:
 
 
 
+
+<Tip>
+    To learn how to trace your agent with LangSmith, see the [LangSmith documentation](/langsmith/trace-with-langgraph).
+</Tip>
 
 Congratulations! You've built your first agent using the LangGraph Graph API.
 
@@ -528,6 +530,10 @@ for chunk in agent.stream(messages, stream_mode="updates"):
 
 
 
+
+<Tip>
+    To learn how to trace your agent with LangSmith, see the [LangSmith documentation](/langsmith/trace-with-langgraph).
+</Tip>
 
 Congratulations! You've built your first agent using the LangGraph Functional API.
 
