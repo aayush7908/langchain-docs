@@ -18,7 +18,7 @@ Before diving into this content, it might be helpful to read the following:
 **If you are looking to export a large volume of traces, we recommend that you use the [Bulk Data Export](./data-export) functionality, as it will better handle large data volumes and will support automatic retries and parallelization across partitions.**
 </Note>
 
-The recommended way to query runs (the span data in LangSmith traces) is to use the `list_runs` method in the SDK or `/runs/query` endpoint in the API.
+The recommended way to query runs (the span data in LangSmith traces) is to use the `list_runs` method in the SDK or `POST /runs/query` endpoint in the API.
 
 LangSmith stores traces in a simple format that is specified in the [Run (span) data format](/langsmith/run-data-format).
 
@@ -776,3 +776,58 @@ df.head()
 ```
 
 </CodeGroup>
+
+## Rate Limits
+
+<Tip>
+    **TL;DR:** Use `<=7days` time window and avoid full-text search to reach highest rate-limit.
+</Tip>
+
+Here is the `POST /runs/query` endpoint rate limits. As a reminder, this endpoint is used by the [list_runs](https://docs.smith.langchain.com/reference/python/client/langsmith.client.Client#langsmith.client.Client.list_runs)/[listRuns](https://docs.smith.langchain.com/reference/js/classes/client.Client#listruns) SDKs methods.
+
+### <Icon icon="face-smile" iconType="solid" color="#059669"/> Short time-window: `10requests/10sec`
+
+Use `end_time - start_time <= 7 days`. We use query time if `end_time` isn’t provided.
+
+<CodeGroup>
+```python Python
+client.list_runs(
+    project_name="<your_project>",
+    start_time=datetime.now() - timedelta(days=7),
+)
+```
+
+```typescript TypeScript
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+client.listRuns({
+    projectName: "<your_project>",
+    startTime: new Date(Date.now() - 7 * ONE_DAY_MS),
+})
+```
+</CodeGroup>
+
+### <Icon icon="face-meh" iconType="solid" color="#ffc107"/> Larger time-windows: `3requests/10sec`
+
+You will fall in this category if you don't provide a `start_time` or if `end_time - start_time > 7 days`. We use query time if `end_time` isn’t provided.
+
+Reach higher limits by using short time windows and pagination.
+
+<CodeGroup>
+```python Python
+client.list_runs(
+    project_name="<your_project>",
+    start_time=datetime.now() - timedelta(days=7),
+)
+```
+
+```typescript TypeScript
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+client.listRuns({
+    projectName: "<your_project>",
+    startTime: new Date(Date.now() - 7 * ONE_DAY_MS),
+})
+```
+</CodeGroup>
+
+TO add:
+- Auto-pagination in SDKs
