@@ -1,43 +1,36 @@
 ---
-title: Online customer support with handoffs
+title: Build a customer support agent with handoffs
 sidebarTitle: Customer support handoffs
 ---
 
-import StableCalloutPy from '/snippets/stable-lc-callout-py.mdx';
+The [handoffs pattern](/oss/langchain/multi-agent#handoffs) is a multi-agent architecture where agents pass control to each other through state transitions. This tutorial demonstrates how to build an online customer support system where different "agents" (really, different configurations of a single agent) handle specific stages of the support workflow.
 
-:::python
-<StableCalloutPy />
-:::
+In this tutorial, you'll build a customer support agent that does the following:
 
-## Overview
+- Collects warranty information before proceeding.
+- Classifies issues as hardware or software.
+- Provides solutions or escalates to human support.
+- Maintains conversation state across multiple turns.
 
-The **handoffs pattern** is a [multi-agent](/oss/langchain/multi-agent#handoffs) architecture where agents pass control to each other through state transitions. This tutorial demonstrates how to build an online customer support system where different "agents" (really, different configurations of a single agent) handle specific stages of the support workflow.
-
-In this tutorial, you'll build a support bot that:
-- Collects warranty information before proceeding
-- Classifies issues as hardware or software
-- Provides solutions or escalates to human support
-- Maintains conversation state across multiple turns
-
-Unlike the [supervisor pattern](/oss/langchain/supervisor) where subagents are called as tools, handoffs create a **state machine** where the active stage changes based on workflow progress. The key insight is that each "stage" is just a different configuration (system prompt + tools) of the same underlying agent, selected dynamically based on state.
+Unlike the [supervisor pattern](/oss/langchain/supervisor) where sub-agents are called as tools, handoffs create a **state machine** where the active stage changes based on workflow progress. Each "stage" is just a different configuration (system prompt + tools) of the same underlying agent, selected dynamically based on state.
 
 Here's the workflow we'll build:
 
 ```mermaid
 flowchart TD
     %% Start
-    Start([💬 Customer reports<br>an issue]) --> Warranty{🧾 Is device<br>under warranty?}
+    Start([💬 Customer reports<br>an issue]) --> Warranty{Is the device<br>under warranty?}
 
     %% Warranty check
-    Warranty -->|✅ Yes| IssueType{🧩 What type<br>of issue?}
-    Warranty -->|❌ No| OutOfWarranty{🛠️ What type<br>of issue?}
+    Warranty -->|✅ Yes| IssueType{What type<br>of issue?}
+    Warranty -->|❌ No| OutOfWarranty{What type<br>of issue?}
 
     %% In-Warranty branch
-    IssueType -->|🔩 Hardware| Repair[🔧 Provide warranty<br>repair instructions]
-    IssueType -->|💻 Software| Troubleshoot[💡 Provide troubleshooting<br>steps]
+    IssueType -->|🔩 Hardware| Repair[Provide warranty<br>repair instructions]
+    IssueType -->|💻 Software| Troubleshoot[Provide troubleshooting<br>steps]
 
     %% Out-of-Warranty branch
-    OutOfWarranty -->|🔩 Hardware| Escalate[🧑 Escalate to human<br>for paid repair options]
+    OutOfWarranty -->|🔩 Hardware| Escalate[Escalate to human<br>for paid repair options]
     OutOfWarranty -->|💻 Software| Troubleshoot
 
     %% Troubleshooting follow-up
@@ -57,76 +50,46 @@ flowchart TD
     class Close endNode
 ```
 
-### When to use handoffs
-
-Handoffs excel at **sequential information collection** in online customer support:
-
-* **Warranty verification** - Collect warranty ID before processing refunds
-* **Account verification** - Gather credentials before accessing sensitive data
-* **Progressive disclosure** - Unlock options only after collecting required information
-
-<Warning>
-    Design handoff flows to avoid frustrating users. Allow them to:
-    * Correct previous responses
-    * Navigate back to earlier steps
-    * Change the conversation flow naturally
-
-    Rigid workflows feel like poorly designed phone trees.
-</Warning>
-
-### Concepts
-
-We will cover the following concepts:
-
-- [Multi-agent systems](/oss/langchain/multi-agent)
-- [Middleware](/oss/langchain/middleware) for dynamic agent configuration
-- [Tools](/oss/langchain/tools) for state management
-- [Short-term memory](/oss/langchain/short-term-memory) for state persistence
-
 ## Setup
 
-### Installation
+1. Install the `langchain` package:
 
-This tutorial requires the `langchain` package:
+    <CodeGroup>
+    ```bash pip
+    pip install langchain
+    ```
+    ```bash conda
+    conda install langchain -c conda-forge
+    ```
+    </CodeGroup>
 
-<CodeGroup>
-```bash pip
-pip install langchain
-```
-```bash conda
-conda install langchain -c conda-forge
-```
-</CodeGroup>
+    For more details, see our [Installation guide](/oss/langchain/install).
 
-For more details, see our [Installation guide](/oss/langchain/install).
+2. Set up [LangSmith](https://smith.langchain.com) to inspect what is happening inside your agent:
 
-### LangSmith
+    <CodeGroup>
+    ```bash bash
+    export LANGSMITH_TRACING="true"
+    export LANGSMITH_API_KEY="..."
+    ```
+    ```python python
+    import getpass
+    import os
 
-Set up [LangSmith](https://smith.langchain.com) to inspect what is happening inside your agent:
+    os.environ["LANGSMITH_TRACING"] = "true"
+    os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
+    ```
+    </CodeGroup>
 
-<CodeGroup>
-```bash bash
-export LANGSMITH_TRACING="true"
-export LANGSMITH_API_KEY="..."
-```
-```python python
-import getpass
-import os
+3. Select a chat model. For this tutorial, we'll use Claude 3.5 Sonnet:
 
-os.environ["LANGSMITH_TRACING"] = "true"
-os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
-```
-</CodeGroup>
+    <CodeGroup>
+    ```python python
+    from langchain.chat_models import init_chat_model
 
-### Components
-
-We will need to select a chat model:
-
-```python
-from langchain.chat_models import init_chat_model
-
-model = init_chat_model("anthropic:claude-3-5-sonnet-latest")
-```
+    model = init_chat_model("anthropic:claude-3-5-sonnet-latest")
+    ```
+    </CodeGroup>
 
 ## 1. Define custom state
 
@@ -201,19 +164,19 @@ def record_issue_type(
 
 
 @tool
-def escalate_to_human(reason: str, runtime: ToolRuntime[None, SupportState]) -> str:
+def escalate_to_human(reason: str, _runtime: ToolRuntime[None, SupportState]) -> str:
     """Escalate the case to a human support specialist."""
     # In a real system, this would create a ticket, notify staff, etc.
     return f"Escalating to human support. Reason: {reason}"
 
 
 @tool
-def provide_solution(solution: str, runtime: ToolRuntime[None, SupportState]) -> str:
+def provide_solution(solution: str, _runtime: ToolRuntime[None, SupportState]) -> str:
     """Provide a solution to the customer's issue."""
     return f"Solution provided: {solution}"
 ```
 
-Notice how `record_warranty_status` and `record_issue_type` return `Command` objects that update both the data (warranty_status, issue_type) AND the `current_stage`. This is the handoff mechanism - tools control the workflow.
+Notice how `record_warranty_status` and `record_issue_type` return `Command` objects that update both the data (`warranty_status`, `issue_type`) AND the `current_stage`. This is the handoff mechanism - tools control the workflow.
 
 ## 3. Define stage configurations
 
@@ -323,11 +286,12 @@ async def apply_stage_config(
 ```
 
 This middleware:
-1. **Reads current stage**: Gets `current_stage` from state (defaults to "warranty_collector")
-2. **Looks up configuration**: Finds the matching entry in `STAGE_CONFIG`
-3. **Validates dependencies**: Ensures required state fields exist
-4. **Formats prompt**: Injects state values into the prompt template
-5. **Applies configuration**: Overrides the system prompt and available tools
+
+1. **Reads current stage**: Gets `current_stage` from state (defaults to "warranty_collector").
+2. **Looks up configuration**: Finds the matching entry in `STAGE_CONFIG`.
+3. **Validates dependencies**: Ensures required state fields exist.
+4. **Formats prompt**: Injects state values into the prompt template.
+5. **Applies configuration**: Overrides the system prompt and available tools.
 
 The `request.override()` method is key - it allows us to dynamically change the agent's behavior based on state without creating separate agent instances.
 
@@ -455,7 +419,7 @@ Next turn, middleware applies:
 
 The key insight: **Tools drive the workflow** by updating `current_stage`, and **middleware responds** by applying the appropriate configuration.
 
-## 8. Adding flexibility: Going back
+## 8. Add flexibility: Go back
 
 A key UX requirement is allowing users to correct mistakes. Add "go back" tools:
 
@@ -508,11 +472,11 @@ result = agent.invoke(
 # Agent will call go_back_to_warranty and restart the warranty verification stage
 ```
 
-## 9. Complete example
+## Complete example
 
 Here's everything together in a runnable script:
 
-<Expandable title="View complete code" defaultOpen={false}>
+<Expandable title="Complete code" defaultOpen={false}>
 
 ```python
 """
@@ -550,7 +514,6 @@ class SupportState(AgentState):
     current_stage: NotRequired[SupportStage]
     warranty_status: NotRequired[Literal["in_warranty", "out_of_warranty"]]
     issue_type: NotRequired[Literal["hardware", "software"]]
-
 
 
 @tool
@@ -594,14 +557,14 @@ def record_issue_type(
 
 
 @tool
-def escalate_to_human(reason: str, runtime: ToolRuntime[None, SupportState]) -> str:
+def escalate_to_human(reason: str, _runtime: ToolRuntime[None, SupportState]) -> str:
     """Escalate the case to a human support specialist."""
     # In a real system, this would create a ticket, notify staff, etc.
     return f"Escalating to human support. Reason: {reason}"
 
 
 @tool
-def provide_solution(solution: str, runtime: ToolRuntime[None, SupportState]) -> str:
+def provide_solution(solution: str, _runtime: ToolRuntime[None, SupportState]) -> str:
     """Provide a solution to the customer's issue."""
     return f"Solution provided: {solution}"
 
@@ -692,6 +655,7 @@ async def apply_stage_config(
 
     return await handler(request)
 
+
 # Collect all tools from all agent configurations
 all_tools = [
     record_warranty_status,
@@ -749,38 +713,6 @@ if __name__ == "__main__":
 ```
 
 </Expandable>
-
-## Key takeaways
-
-The handoffs pattern demonstrates several important concepts:
-
-1. **State machines**: The `current_stage` field creates a state machine where each state has different behavior (prompts + tools).
-
-2. **Dictionary-based configuration**: `STAGE_CONFIG` makes it easy to see all stages at a glance and add new ones.
-
-3. **Dynamic middleware**: A single middleware function reads state and applies the appropriate configuration on-the-fly.
-
-4. **State persistence**: A checkpointer maintains state across conversation turns, enabling the handoff mechanism.
-
-5. **Sequential workflows**: Perfect for collecting information in a specific order (warranty → classification → resolution).
-
-6. **Flexibility**: Tools can transition forward OR backward, allowing users to correct mistakes.
-
-<Tip>
-**When to use handoffs vs supervisor pattern**
-
-Use **handoffs** when:
-- Agents need direct conversation with users
-- Workflow requires sequential information collection
-- State transitions depend on user responses
-
-Use **[supervisor](/oss/langchain/supervisor)** when:
-- Sub-agents don't need to converse with users
-- You want centralized orchestration
-- Sub-agents are truly independent specialists
-
-You can also mix both patterns!
-</Tip>
 
 ## Next steps
 
