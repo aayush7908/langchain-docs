@@ -921,6 +921,14 @@ const agent = createAgent({
 
 ### Working with system messages
 
+:::python
+
+You can modify system prompts in middleware using either `system_prompt` (`string`) or `system_message` (@[`SystemMessage`]). The @[`ModelRequest`] provides both for maximum flexibility.
+
+:::
+
+:::js
+
 You can modify system prompts in middleware using either `systemPrompt` (`string`) or `systemMessage` (@[`SystemMessage`]). The @[`ModelRequest`] provides both for maximum flexibility.
 
 **Key behavior:**
@@ -929,6 +937,8 @@ You can modify system prompts in middleware using either `systemPrompt` (`string
 - Using `systemPrompt` creates a new simple system message (may overwrite cache control metadata)
 - Using `systemMessage` (JavaScript) or manually combining content blocks (Python) preserves existing cache control and structured content blocks
 - Multiple middleware can chain modifications sequentially across different middleware calls
+
+:::
 
 :::python
 

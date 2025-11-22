@@ -146,9 +146,11 @@
                   "pages": [
                     "oss/python/langchain/overview",
                     {
-                      "group": "LangChain v1.1",
+                      "group": "Releases",
                       "pages": [
-                        "oss/python/releases/langchain-v1-1"
+                        "oss/python/releases/langchain-v1",
+                        "oss/python/releases/changelog",
+                        "oss/python/migrate/langchain-v1"
                       ]
                     },
                     {
@@ -416,8 +418,8 @@
                         {
                           "group": "Releases",
                           "pages": [
-                            "oss/python/releases/langchain-v1",
-                            "oss/python/releases/langchain-v1-1"
+                            "oss/python/releases/changelog",
+                            "oss/python/releases/langchain-v1"
                           ]
                         },
                         {
@@ -487,9 +489,11 @@
                   "pages": [
                     "oss/javascript/langchain/overview",
                     {
-                      "group": "LangChain v1.1",
+                      "group": "Releases",
                       "pages": [
-                        "oss/javascript/releases/langchain-v1-1"
+                        "oss/javascript/releases/langchain-v1",
+                        "oss/javascript/releases/changelog",
+                        "oss/javascript/migrate/langchain-v1"
                       ]
                     },
                     {
@@ -791,8 +795,8 @@
                         {
                           "group": "Releases",
                           "pages": [
-                            "oss/javascript/releases/langchain-v1",
-                            "oss/javascript/releases/langchain-v1-1"
+                            "oss/javascript/releases/changelog",
+                            "oss/javascript/releases/langchain-v1"
                           ]
                         },
                         {
