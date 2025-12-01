@@ -1,0 +1,103 @@
+---
+title: Call agents from code
+description: Invoke Agent Builder agents from Python or JavaScript using the LangGraph SDK.
+sidebarTitle: Call from code
+mode: wide
+---
+
+You can invoke Agent Builder agents from your applications using the LangGraph SDK. Use standard threads and runs APIs and pass optional configuration for models and auth.
+
+<Tabs>
+  <Tab title="Python">
+```python
+import os
+from dotenv import load_dotenv
+from langgraph_sdk.client import get_client
+
+load_dotenv()
+
+agent_id = "your-agent-id"
+
+# This must be a PAT API key tied to your user
+api_key = os.getenv("LANGGRAPH_API_KEY")
+api_url = "https://your-deployment.langgraph.app"
+
+client = get_client(
+    url=api_url,
+    api_key=api_key,
+    headers={
+        "X-Auth-Scheme": "langsmith-api-key",
+    },
+)
+
+# Get the assistant
+agent = await client.assistants.get(agent_id)
+
+# Create a thread and run
+thread = await client.threads.create()
+
+run = await client.runs.create_and_wait(
+    thread_id=thread["thread_id"],
+    assistant_id=agent_id,
+    input={"messages": [{"role": "user", "content": "Plan a weekly summary"}]},
+    configurable={
+        # Optional: override model (see Custom models)
+        "llm_model_config": {
+            "modelId": "anthropic:claude-sonnet-4-5",
+            "envVarName": "AGENT_BUILDER_ANTHROPIC_API_KEY",
+        }
+    },
+)
+
+print(run["output"])  # agent response
+```
+  </Tab>
+  <Tab title="TypeScript">
+```ts
+import "dotenv/config";
+import { Client } from "@langchain/langgraph-sdk";
+
+const agentId = "your-agent-id";
+
+// This must be a PAT API key tied to your user
+const apiKey = process.env.LANGGRAPH_API_KEY;
+const apiUrl = "https://your-deployment.langgraph.app";
+
+const client = new Client({
+  apiUrl,
+  apiKey,
+  defaultHeaders: {
+    "X-Auth-Scheme": "langsmith-api-key",
+  },
+});
+
+// Get the assistant
+const agent = await client.assistants.get(agentId);
+
+// Create a thread and run
+const thread = await client.threads.create();
+
+const run = await client.runs.createAndWait(
+  thread.thread_id,
+  {
+    assistant_id: agentId,
+    input: { messages: [{ role: "user", content: "Draft an update" }] },
+  },
+  {
+    configurable: {
+      llm_model_config: {
+        modelId: "anthropic:claude-sonnet-4-5",
+        envVarName: "AGENT_BUILDER_ANTHROPIC_API_KEY",
+      },
+    },
+  }
+);
+
+console.log(run.output);
+```
+  </Tab>
+</Tabs>
+
+<Callout icon="key" color="#FEF3C7" iconType="regular">
+  Use a PAT (Personal Access Token) API key tied to your user account. Set the `X-Auth-Scheme` header to `langsmith-api-key` for authentication. If you implemented custom authentication, pass your user's token in headers so the agent can use user‑scoped tools. See "Add custom authentication".
+</Callout>

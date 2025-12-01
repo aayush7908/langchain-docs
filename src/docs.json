@@ -1343,7 +1343,9 @@
                 "langsmith/agent-builder-setup",
                 "langsmith/agent-builder-tools",
                 "langsmith/agent-builder-mcp-framework",
-                "langsmith/agent-builder-slack-app"
+                "langsmith/agent-builder-slack-app",
+                "langsmith/agent-builder-auth-format",
+                "langsmith/agent-builder-code"
               ]
             },
             {
