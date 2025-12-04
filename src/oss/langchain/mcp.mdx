@@ -1006,7 +1006,6 @@ async def fallback_interceptor(
     except ConnectionError:
         return f"Could not connect to {request.name} service. Using cached data."
 ```
-:::
 
 ### Resources
 
@@ -1014,7 +1013,6 @@ async def fallback_interceptor(
 
 #### Loading resources
 
-:::python
 Use `client.get_resources()` to load resources from an MCP server:
 
 ```python
@@ -1048,7 +1046,6 @@ async with client.session("server_name") as session:
     # Or load specific resources by URI
     blobs = await load_mcp_resources(session, uris=["file:///path/to/file.txt"])
 ```
-:::
 
 ### Prompts
 
@@ -1056,7 +1053,6 @@ async with client.session("server_name") as session:
 
 #### Loading prompts
 
-:::python
 Use `client.get_prompt()` to load a prompt from an MCP server:
 
 ```python
@@ -1098,13 +1094,11 @@ async with client.session("server_name") as session:
         arguments={"language": "python", "focus": "security"}
     )
 ```
-:::
 
 ## Advanced features
 
 ### Progress notifications
 
-:::python
 Subscribe to progress updates for long-running tool executions:
 
 ```python Progress callback
@@ -1131,11 +1125,9 @@ client = MultiServerMCPClient(
 The `CallbackContext` provides:
 - `server_name`: Name of the MCP server
 - `tool_name`: Name of the tool being executed (available during tool calls)
-:::
 
 ### Logging
 
-:::python
 The MCP protocol supports [logging](https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging#log-levels) notifications from servers. Use the `Callbacks` class to subscribe to these events.
 
 ```python Logging callback
@@ -1155,6 +1147,7 @@ client = MultiServerMCPClient(
     callbacks=Callbacks(on_logging_message=on_logging_message),  # [!code highlight]
 )
 ```
+
 :::
 
 ## Additional resources
