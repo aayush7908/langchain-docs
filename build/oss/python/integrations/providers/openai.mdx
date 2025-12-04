@@ -72,8 +72,6 @@ Middleware specifically designed for OpenAI models. Learn more about [middleware
 |------------|-------------|
 | [Content moderation](#content-moderation) | Moderate agent traffic using OpenAI's moderation endpoint |
 
-
-
 ### Content moderation
 
 Moderate agent traffic (user input, model output, and tool results) using OpenAI's moderation endpoint to detect and handle unsafe content. Content moderation is useful for the following:
@@ -107,7 +105,6 @@ agent = create_agent(
     ],
 )
 ```
-
 
 <Accordion title="Configuration options">
 
@@ -152,7 +149,6 @@ agent = create_agent(
 <ParamField body="async_client" type="AsyncOpenAI | None">
     Optional pre-configured AsyncOpenAI client to reuse. If not provided, a new async client will be created.
 </ParamField>
-
 
 </Accordion>
 
@@ -221,8 +217,6 @@ agent_replace = create_agent(
     ],
 )
 ```
-
-
 </Accordion>
 
 ## Other
