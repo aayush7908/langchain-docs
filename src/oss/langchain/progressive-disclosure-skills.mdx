@@ -215,7 +215,48 @@ Always verify trip dates, destination, and get manager approval before booking."
 
 </Accordion>
 
-## 2. Build skill middleware
+## 2. Create skill discovery tools
+
+Create a function to list available skills (we'll call this to build the system prompt) and a tool to load full skill content on-demand:
+
+```python
+from langchain.tools import tool
+
+def list_available_skills() -> str:
+    """Format skill descriptions for the system prompt.
+
+    Returns a string listing all available skills with their brief descriptions.
+    """
+    skills_list = []
+    for skill in SKILLS:
+        skills_list.append(f"- **{skill['name']}**: {skill['description']}")
+    return "\n".join(skills_list)
+
+
+@tool
+def load_skill(skill_name: str) -> str:
+    """Load the full content of a skill into the agent's context.
+
+    Use this when you need detailed information about how to handle a specific
+    type of request. This will provide you with comprehensive instructions,
+    policies, and guidelines for the skill area.
+
+    Args:
+        skill_name: The name of the skill to load (e.g., "expense_reporting", "travel_booking")
+    """
+    # Find and return the requested skill
+    for skill in SKILLS:
+        if skill["name"] == skill_name:
+            return f"Loaded skill: {skill_name}\n\n{skill['content']}"
+
+    # Skill not found
+    available = ", ".join(s["name"] for s in SKILLS)
+    return f"Skill '{skill_name}' not found. Available skills: {available}"
+```
+
+The `list_available_skills()` function formats the lightweight skill descriptions that we'll inject into the system prompt. The `load_skill` tool returns the full skill content as a string, which becomes part of the conversation as a ToolMessage.
+
+## 3. Build skill middleware
 
 Create custom middleware that injects skill descriptions into the system prompt. This middleware makes skills discoverable without loading their full content upfront.
 
@@ -226,43 +267,21 @@ This guide demonstrates creating custom middleware. For a comprehensive guide on
 ```python
 from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse, AgentMiddleware
 from langchain_core.messages import SystemMessage
-from langchain.tools import tool
 from typing import Callable
 
 class SkillMiddleware(AgentMiddleware):
     """Middleware that injects skill descriptions into the system prompt."""
 
-    def __init__(self):
-        """Initialize and generate the skills prompt from SKILLS."""
-        # Build skills prompt from the SKILLS list
-        skills_list = []
-        for skill in SKILLS:
-            skills_list.append(f"- **{skill['name']}**: {skill['description']}")
-        self.skills_prompt = "\n".join(skills_list)
+    # Register the load_skill tool as a class variable
+    tools = [load_skill]
 
-        # Define the load_skill tool
-        @tool
-        def load_skill(skill_name: str) -> str:
-            """Load the full content of a skill into the agent's context.
+    def __init__(self, skills_prompt: str):
+        """Initialize with the skills prompt addendum.
 
-            Use this when you need detailed information about how to handle a specific
-            type of request. This will provide you with comprehensive instructions,
-            policies, and guidelines for the skill area.
-
-            Args:
-                skill_name: The name of the skill to load (e.g., "expense_reporting", "travel_booking")
-            """
-            # Find and return the requested skill
-            for skill in SKILLS:
-                if skill["name"] == skill_name:
-                    return f"Loaded skill: {skill_name}\n\n{skill['content']}"
-
-            # Skill not found
-            available = ", ".join(s["name"] for s in SKILLS)
-            return f"Skill '{skill_name}' not found. Available skills: {available}"
-
-        # Register the tool as an instance variable
-        self.tools = [load_skill]
+        Args:
+            skills_prompt: Formatted string describing available skills
+        """
+        self.skills_prompt = skills_prompt
 
     @wrap_model_call
     async def awrap_model_call(
@@ -301,9 +320,9 @@ class SkillMiddleware(AgentMiddleware):
         return handler(request.override(system_message=new_system_message))
 ```
 
-The middleware appends skill descriptions to the system prompt, making the agent aware of available skills without loading their full content. The `load_skill` tool is defined within the `__init__` method and registered as an instance variable (`self.tools`), making it available to the agent.
+The middleware appends skill descriptions to the system prompt, making the agent aware of available skills without loading their full content. The `load_skill` tool is registered as a class variable, making it available to the agent.
 
-## 3. Create the agent with skill support
+## 4. Create the agent with skill support
 
 Now create the agent with the skill middleware and a checkpointer for state persistence:
 
@@ -311,18 +330,24 @@ Now create the agent with the skill middleware and a checkpointer for state pers
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
+# Generate the skills prompt addendum
+skills_prompt = list_available_skills()
+
+# Create skill middleware instance
+skill_middleware = SkillMiddleware(skills_prompt=skills_prompt)
+
 # Create the agent with skill support
 agent = create_agent(
     model,
     system_prompt="You are a helpful employee support assistant.",
-    middleware=[SkillMiddleware()],  # Automatically generates skills prompt from SKILLS
+    middleware=[skill_middleware],
     checkpointer=InMemorySaver(),
 )
 ```
 
 The agent now has access to skill descriptions in its system prompt and can call `load_skill` to retrieve full skill content when needed. The checkpointer maintains conversation history across turns.
 
-## 4. Test progressive disclosure
+## 5. Test progressive disclosure
 
 Test the agent with a question that requires skill-specific knowledge:
 
@@ -397,7 +422,7 @@ Make sure your receipt clearly shows all these details. Given that the expense i
 
 The agent saw the lightweight skill description in its system prompt, recognized the question was about expense reporting, called `load_skill("expense_reporting")` to get the full content, and then used that detailed knowledge to provide a comprehensive answer.
 
-## 5. Advanced: Enforce tools per skill with middleware
+## 6. Advanced: Enforce tools per skill with middleware
 
 [PLACEHOLDER: Show how to use custom middleware to enforce that certain tools are only available when specific skills are loaded. This goes beyond the basic prompt-based approach and adds rigid constraints. Example: when the expense_reporting skill is loaded, register expense-specific tools like submit_expense_report or check_expense_status. The middleware can track loaded_skills in state and conditionally register tools based on which skills are active.]
 
