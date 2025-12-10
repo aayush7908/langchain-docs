@@ -31,6 +31,14 @@ title: Anthropic
 
     [:octicons-arrow-right-24: Reference](./AnthropicLLM.md)
 
+- :material-tools:{ .lg .middle } __Tools__
+
+    ---
+
+    Claude-specific server side tool types.
+
+    [:octicons-arrow-right-24: Reference](./tools.md)
+
 - :material-middleware:{ .lg .middle } __Middleware__
 
     ---
