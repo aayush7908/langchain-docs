@@ -1395,6 +1395,14 @@ Weather(temperature=75.0, condition='Sunny')
 
 Anthropic supports a variety of [built-in tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/text-editor-tool), which can be bound to the model in the [usual way](/oss/langchain/tools/). Claude will generate tool calls adhering to its internal schema for the tool.
 
+<Info>
+    **Middleware vs tools**
+
+    For client-side tools ([bash](#bash-tool), [text editor](#text-editor), [memory](#memory-tool)), you may opt to use [middleware](/oss/integrations/middleware/anthropic), which provide production-ready implementations that contain built-in execution, state management, and security policies.
+
+    Use middleware when you want a turnkey solution; use tools (documented below) when you need custom execution logic or want to use @[`bind_tools`][ChatAnthropic.bind_tools] directly.
+</Info>
+
 ### Bash tool
 
 Claude supports a [bash tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/bash-tool) that allows it to execute shell commands in a persistent bash session. This enables system operations, script execution, and command-line automation.
@@ -1447,6 +1455,10 @@ response = model_with_bash.invoke(
 The bash tool supports two parameters:
 - `command` (required): The bash command to execute
 - `restart` (optional): Set to `true` to restart the bash session
+
+<Tip>
+    For a "batteries-included" implementation, consider using [`ClaudeBashToolMiddleware`](/oss/integrations/middleware/anthropic#bash-tool) which provides persistent sessions, Docker isolation, output redaction, and startup/shutdown commands out of the box.
+</Tip>
 
 ### Code execution
 
@@ -1677,6 +1689,10 @@ I'll help you fix the syntax error in your primes.py file. Let me first take a l
     - `text_editor_20250728` (recommended)
 </Note>
 
+<Tip>
+    For a "batteries-included" implementation, consider using [`StateClaudeTextEditorMiddleware`](/oss/integrations/middleware/anthropic#text-editor) or [`FilesystemClaudeTextEditorMiddleware`](/oss/integrations/middleware/anthropic#text-editor) which provide LangGraph state integration or filesystem persistence, path validation, and other features.
+</Tip>
+
 ### Web fetching
 
 Claude can use a [web fetching tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-fetch-tool) to retrieve full content from specified web pages and PDF documents and ground its responses with citations.
@@ -1741,6 +1757,10 @@ response.content_blocks
   'args': {'command': 'view', 'path': '/memories'},
   'id': 'toolu_01XeP9sxx44rcZHFNqXSaKqh'}]
 ```
+
+<Tip>
+    For a "batteries-included" implementation, consider using [`StateClaudeMemoryMiddleware`](/oss/integrations/middleware/anthropic#memory) or [`FilesystemClaudeMemoryMiddleware`](/oss/integrations/middleware/anthropic#memory) which provide LangGraph state integration or filesystem persistence, automatic system prompt injection, and other features.
+</Tip>
 
 ### Tool search
 
