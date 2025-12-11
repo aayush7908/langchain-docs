@@ -475,6 +475,12 @@ Common examples:
         .add_edge("write", "edit")
         .compile()
     )
+
+    result = workflow.invoke(
+        {"messages": [{"role": "user", "content": "Write an article about AI agents"}]}
+    )
+    for msg in result["messages"]:
+        msg.pretty_print()
     ```
     :::
     :::js
@@ -513,6 +519,14 @@ Common examples:
       .addEdge("research", "write")
       .addEdge("write", "edit")
       .compile();
+
+    const result = await workflow.invoke({
+      messages: [{ role: "user", content: "Write an article about AI agents" }]
+    });
+
+    for (const msg of result.messages) {
+      console.log(msg.content);
+    }
     ```
     :::
   </Tab>
@@ -523,6 +537,11 @@ Common examples:
     ```python
     from langgraph.graph import StateGraph, MessagesState, START
     from langchain.agents import create_agent
+    from typing import Literal
+
+    class RouterState(MessagesState):
+        """State that tracks which agent should handle the request."""
+        active_agent: str
 
     # Create specialist agents
     billing_agent = create_agent(
@@ -546,28 +565,41 @@ Common examples:
         name="sales"
     )
 
-    # Router function that classifies intent
-    def route_by_intent(state: MessagesState) -> str:
-        """Classify the user's intent and route to the appropriate agent."""
+    # Router node that classifies intent and sets active_agent
+    def router(state: RouterState) -> dict:
+        """Classify the user's intent and set the active agent."""
         # Use an LLM or classifier to determine intent
         intent = classify_intent(state["messages"][-1].content)
-        return intent  # Returns "billing", "technical", or "sales"
+        return {"active_agent": intent}
+
+    # Conditional edge function that reads from state
+    def route_to_agent(state: RouterState) -> Literal["billing", "technical", "sales"]:
+        """Route to the agent specified in state."""
+        return state["active_agent"]
 
     # Define router workflow
     workflow = (
-        StateGraph(MessagesState)
+        StateGraph(RouterState)
+        .add_node("router", router)
         .add_node("billing", billing_agent)
         .add_node("technical", technical_agent)
         .add_node("sales", sales_agent)
-        .add_conditional_edges(START, route_by_intent)
+        .add_edge(START, "router")
+        .add_conditional_edges("router", route_to_agent)
         .compile()
     )
     ```
     :::
     :::js
     ```typescript
-    import { StateGraph, MessagesAnnotation, START } from "@langchain/langgraph";
+    import { StateGraph, MessagesAnnotation, START, Annotation } from "@langchain/langgraph";
     import { createAgent } from "langchain";
+
+    // State that tracks which agent should handle the request
+    const RouterState = Annotation.Root({
+      ...MessagesAnnotation.spec,
+      activeAgent: Annotation<string>()
+    });
 
     // Create specialist agents
     const billingAgent = createAgent({
@@ -591,19 +623,26 @@ Common examples:
       name: "sales"
     });
 
-    // Router function that classifies intent
-    function routeByIntent(state: typeof MessagesAnnotation.State): string {
+    // Router node that classifies intent and sets activeAgent
+    function router(state: typeof RouterState.State): Partial<typeof RouterState.State> {
       // Use an LLM or classifier to determine intent
       const intent = classifyIntent(state.messages.at(-1)?.content);
-      return intent; // Returns "billing", "technical", or "sales"
+      return { activeAgent: intent };
+    }
+
+    // Conditional edge function that reads from state
+    function routeToAgent(state: typeof RouterState.State): "billing" | "technical" | "sales" {
+      return state.activeAgent as "billing" | "technical" | "sales";
     }
 
     // Define router workflow
-    const workflow = new StateGraph(MessagesAnnotation)
+    const workflow = new StateGraph(RouterState)
+      .addNode("router", router)
       .addNode("billing", billingAgent)
       .addNode("technical", technicalAgent)
       .addNode("sales", salesAgent)
-      .addConditionalEdges(START, routeByIntent)
+      .addEdge(START, "router")
+      .addConditionalEdges("router", routeToAgent)
       .compile();
     ```
     :::
