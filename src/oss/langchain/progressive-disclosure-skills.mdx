@@ -215,7 +215,7 @@ Always verify trip dates, destination, and get manager approval before booking."
 
 </Accordion>
 
-## 2. Create skill discovery tool
+## 2. Create skill loading tool
 
 Create a tool to load full skill content on-demand:
 
@@ -329,7 +329,18 @@ config = {"configurable": {"thread_id": thread_id}}
 
 # Ask about expense reporting
 result = agent.invoke(  # [!code highlight]
-    {"messages": [{"role": "user", "content": "I need to submit an expense report for a $150 dinner. What information do I need to provide?"}]},  # [!code highlight]
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    "I need to submit an expense report "
+                    "for a $150 dinner. What information "
+                    "do I need to provide?"
+                ),
+            }
+        ]
+    },
     config
 )
 
