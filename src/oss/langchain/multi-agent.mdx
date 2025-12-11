@@ -428,10 +428,9 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
 
     This example builds a document processing pipeline that extracts text from a document, summarizes it, and translates the summary. The workflow uses **custom state** to pass structured data between nodes rather than relying solely on messages.
 
-    The pipeline demonstrates three node types:
+    The pipeline demonstrates two node types:
     - **Plain function**: Deterministic text extraction (no LLM)
-    - **Agent node**: LLM-powered summarization
-    - **Agent with tools**: Translation with language detection
+    - **Agent node**: LLM-powered summarization and translation
 
     Using custom state fields (like `extracted_text` and `summary`) keeps each stage's output cleanly separated and makes debugging easier.
 
@@ -441,21 +440,17 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
     from langgraph.graph import StateGraph, START, END
     from langchain.agents import create_agent
 
-    # Custom state with dedicated fields for each processing stage
     class DocumentState(TypedDict):
-        document: str           # Raw input document
-        extracted_text: str     # Output from extraction
-        summary: str            # Output from summarization
-        translation: str        # Final translated output
+        document: str
+        extracted_text: str
+        summary: str
+        translation: str
 
-    # Plain function node - extracts text from document
     def extract_text(state: DocumentState) -> dict:
         """Extract text content from a document."""
-        # In practice, this would parse PDFs, images, etc.
         raw = state["document"]
         return {"extracted_text": f"[Extracted from document]: {raw}"}
 
-    # Agent node - summarizes extracted content
     summarize_agent = create_agent(
         model="openai:gpt-4o",
         prompt="Summarize the following text concisely.",
@@ -463,13 +458,11 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
     )
 
     def summarize(state: DocumentState) -> dict:
-        """Summarize the extracted content using the agent."""
         result = summarize_agent.invoke({
             "messages": [{"role": "user", "content": state["extracted_text"]}]
         })
         return {"summary": result["messages"][-1].content}
 
-    # Agent node - translates the summary
     translate_agent = create_agent(
         model="openai:gpt-4o",
         prompt="Translate the following text to Spanish.",
@@ -477,13 +470,11 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
     )
 
     def translate(state: DocumentState) -> dict:
-        """Translate the summary."""
         result = translate_agent.invoke({
             "messages": [{"role": "user", "content": state["summary"]}]
         })
         return {"translation": result["messages"][-1].content}
 
-    # Build the sequential workflow
     workflow = (
         StateGraph(DocumentState)
         .add_node("extract", extract_text)
@@ -497,7 +488,7 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
     )
 
     result = workflow.invoke({"document": "Long document about AI agents..."})
-    print(result["translation"])  # Access the final translated summary
+    print(result["translation"])
     ```
     :::
     :::js
@@ -505,22 +496,18 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
     import { StateGraph, Annotation, START, END } from "@langchain/langgraph";
     import { createAgent } from "langchain";
 
-    // Custom state with dedicated fields for each processing stage
     const DocumentState = Annotation.Root({
-      document: Annotation<string>(),        // Raw input document
-      extractedText: Annotation<string>(),   // Output from extraction
-      summary: Annotation<string>(),         // Output from summarization
-      translation: Annotation<string>()      // Final translated output
+      document: Annotation<string>(),
+      extractedText: Annotation<string>(),
+      summary: Annotation<string>(),
+      translation: Annotation<string>()
     });
 
-    // Plain function node - extracts text from document
     function extractText(state: typeof DocumentState.State) {
-      // In practice, this would parse PDFs, images, etc.
       const raw = state.document;
       return { extractedText: `[Extracted from document]: ${raw}` };
     }
 
-    // Agent node - summarizes extracted content
     const summarizeAgent = createAgent({
       model: "openai:gpt-4o",
       prompt: "Summarize the following text concisely.",
@@ -534,7 +521,6 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
       return { summary: result.messages.at(-1)?.content };
     }
 
-    // Agent node - translates the summary
     const translateAgent = createAgent({
       model: "openai:gpt-4o",
       prompt: "Translate the following text to Spanish.",
@@ -548,7 +534,6 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
       return { translation: result.messages.at(-1)?.content };
     }
 
-    // Build the sequential workflow
     const workflow = new StateGraph(DocumentState)
       .addNode("extract", extractText)
       .addNode("summarize", summarize)
@@ -560,7 +545,7 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
       .compile();
 
     const result = await workflow.invoke({ document: "Long document about AI agents..." });
-    console.log(result.translation);  // Access the final translated summary
+    console.log(result.translation);
     ```
     :::
   </Tab>
@@ -593,13 +578,11 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
     from langchain.agents import create_agent
     from langchain_openai import ChatOpenAI
 
-    # Custom state with routing and answer fields
     class SupportState(TypedDict):
-        question: str       # User's support request
-        route: str          # Classification result
-        answer: str         # Agent's response
+        question: str
+        route: str
+        answer: str
 
-    # Specialist agents with domain-specific prompts
     billing_agent = create_agent(
         model="openai:gpt-4o",
         prompt="You are a billing specialist. Help with invoices, payments, refunds, and subscription changes.",
@@ -618,11 +601,10 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
         name="sales"
     )
 
-    # LLM-based router for accurate classification
     router_llm = ChatOpenAI(model="gpt-4o-mini")
 
     def classify_request(state: SupportState) -> dict:
-        """Use an LLM to classify the support request."""
+        """Classify the support request using an LLM."""
         response = router_llm.invoke([
             {"role": "system", "content": "Classify this support request as 'billing', 'technical', or 'sales'. Reply with only one word."},
             {"role": "user", "content": state["question"]}
@@ -635,7 +617,6 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
     def route_to_agent(state: SupportState) -> Literal["billing", "technical", "sales"]:
         return state["route"]
 
-    # Node functions for each specialist agent
     def handle_billing(state: SupportState) -> dict:
         result = billing_agent.invoke({
             "messages": [{"role": "user", "content": state["question"]}]
@@ -654,7 +635,6 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
         })
         return {"answer": result["messages"][-1].content}
 
-    # Build the router workflow
     workflow = (
         StateGraph(SupportState)
         .add_node("classify", classify_request)
@@ -670,7 +650,7 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
     )
 
     result = workflow.invoke({"question": "I was charged twice for my subscription last month"})
-    print(result["answer"])  # Access the agent's response
+    print(result["answer"])
     ```
     :::
     :::js
@@ -679,14 +659,12 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
     import { createAgent } from "langchain";
     import { ChatOpenAI } from "@langchain/openai";
 
-    // Custom state with routing and answer fields
     const SupportState = Annotation.Root({
-      question: Annotation<string>(),   // User's support request
-      route: Annotation<string>(),      // Classification result
-      answer: Annotation<string>()      // Agent's response
+      question: Annotation<string>(),
+      route: Annotation<string>(),
+      answer: Annotation<string>()
     });
 
-    // Specialist agents with domain-specific prompts
     const billingAgent = createAgent({
       model: "openai:gpt-4o",
       prompt: "You are a billing specialist. Help with invoices, payments, refunds, and subscription changes.",
@@ -705,7 +683,6 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
       name: "sales"
     });
 
-    // LLM-based router for accurate classification
     const routerLlm = new ChatOpenAI({ model: "gpt-4o-mini" });
 
     async function classifyRequest(state: typeof SupportState.State) {
@@ -724,7 +701,6 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
       return state.route as "billing" | "technical" | "sales";
     }
 
-    // Node functions for each specialist agent
     async function handleBilling(state: typeof SupportState.State) {
       const result = await billingAgent.invoke({
         messages: [{ role: "user", content: state.question }]
@@ -746,7 +722,6 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
       return { answer: result.messages.at(-1)?.content };
     }
 
-    // Build the router workflow
     const workflow = new StateGraph(SupportState)
       .addNode("classify", classifyRequest)
       .addNode("billing", handleBilling)
@@ -760,7 +735,7 @@ Use the workflow pattern when you have a **fixed sequence** of processing steps,
       .compile();
 
     const result = await workflow.invoke({ question: "I was charged twice for my subscription last month" });
-    console.log(result.answer);  // Access the agent's response
+    console.log(result.answer);
     ```
     :::
   </Tab>
